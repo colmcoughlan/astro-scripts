@@ -1,0 +1,15 @@
+msin.datacolumn = DATA
+steps=[flagLB,flagHigh,average]
+
+flagLB.type='preflag'
+
+flagLB.mode='setcomplement'
+flagLB.baseline=CS*&;RS*&;RS*&CS*
+
+flagHigh.type='preflag'
+flagHigh.mode='set'
+flagHigh.amplmax=5e-5
+
+average.type='averager'
+average.timestep=2
+average.freqstep=4

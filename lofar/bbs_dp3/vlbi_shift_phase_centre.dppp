@@ -1,0 +1,8 @@
+msin.datacolumn = CORRECTED_DATA
+msout.datacolumn = DATA
+
+steps=[phase_shift]
+
+phase_shift.type = phaseshifter
+
+phase_shift.phasecenter=[04h20m22.025 , +17d53m56.062]

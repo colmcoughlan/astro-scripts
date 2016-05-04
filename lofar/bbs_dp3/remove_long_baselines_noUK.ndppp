@@ -1,0 +1,9 @@
+msin.datacolumn = DATA
+
+steps=[flag,filter]
+
+flag.type=preflagger
+flag.baseline='DE*&&*';'FR*&&*';'SE*&&*'
+filter.type='filter'
+filter.baseline='!DE*&&*';'!FR*&&*';'!SE*&&*'
+filter.remove=true

@@ -1,0 +1,7 @@
+msin.datacolumn = CORRECTED_DATA
+  
+steps=[averager]
+
+averager.timestep=1
+
+averager.freqstep=4

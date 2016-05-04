@@ -1,0 +1,13 @@
+msin.datacolumn = DATA
+steps=[filter,average]
+
+filter.type='filter'
+
+filter.startchan=0
+filter.nchan=0
+filter.baseline=CS*&;RS*&;RS*&CS*
+filter.remove=true
+
+average.type='averager'
+average.timestep=1
+average.freqstep=4

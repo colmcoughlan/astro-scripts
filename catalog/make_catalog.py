@@ -1,0 +1,162 @@
+#! /usr/bin/env python
+# Colm Coughlan 20.8.2015
+# Dublin Institute for Advanced Studies
+
+import sys
+import numpy as np
+import scipy.spatial
+import pandas
+
+# Function to get frequency in Hz
+def get_ref_freq(inputname):
+	# Attempt to open input file
+
+	try:
+		f = open(inputname)
+	except:
+		print("\tError opening "+inputname)
+		sys.exit()
+
+	f.readline()	# Burn the first two lines
+	f.readline()
+	return(float(f.readline().split(" ")[8]))	# This assumes the very particular structure of the output from PyBDSM (csv mode)
+
+def deg_to_sexagesimal(df):
+	coords = []
+
+	rem_ra , hrs = np.modf(np.divide(df['RA'],15.0))
+	seconds_ra , minutes_ra = np.modf(np.multiply(rem_ra,60.0))
+	seconds_ra = np.multiply(seconds_ra,60.0)
+
+	rem_dec , deg = np.modf(df['DEC'])
+	seconds_dec , minutes_dec = np.modf(np.multiply(rem_dec,60.0))
+	seconds_dec = np.multiply(seconds_dec,60.0)
+
+	for i in range(len(df['RA'])):
+		coords.append(('%02d:%02d:%f'%(hrs[i],minutes_ra[i],seconds_ra[i]))+', ''%02d:%02d:%f'%(deg[i],minutes_dec[i],seconds_dec[i]))
+
+	return(coords)
+
+
+# Check arguments
+
+if(len(sys.argv)!=5):
+	print("\t Error: Takes 4 arguments.")
+	print("\t Useage: compare_cat <filename1> <filename2> <radius> <outputname>")
+	print('\t Radius is assumed to be in as. Put higher frequency first.')
+	sys.exit()
+else:
+	inputname1 = str(sys.argv[1])
+	inputname2 = str(sys.argv[2])
+	radius = float(sys.argv[3])/3600.
+	outputname = str(sys.argv[4])
+	print("\t Reading: "+inputname1+", "+inputname2)
+	print("\t Writing: "+outputname)
+
+
+# use pandas to read csv file. Only out of date pandas easily available on Ubuntu 12.04
+# Assumed format: .csv file from PyBDSM
+
+# Get the reference frequencies of each file
+
+freq1 = get_ref_freq(inputname1)
+freq2 = get_ref_freq(inputname2)
+
+
+# Then read in column names (different delimiter...). Assume both files have the same structure
+
+df1 = pandas.read_csv(inputname1,skiprows=5,delimiter=', ')
+
+column_names = df1.columns.values.tolist()
+column_names[0]=column_names[0].split(' ')[1]
+
+# Now read in entire files
+
+df1 = pandas.read_csv(inputname1,skiprows=6,delimiter=',  ',names = column_names)
+df2 = pandas.read_csv(inputname2,skiprows=6,delimiter=',  ',names = column_names)
+
+print(str(df1.ix[1]))
+
+#df1['S_Code'] = df1['S_Code'].strip()
+#df2['S_Code'] = df2['S_Code'].strip()
+
+
+# Now find the distances between each source in the file
+
+distances = scipy.spatial.distance.cdist(np.array([df1['RA'],df1['DEC']]).T , np.array([df2['RA'],df2['DEC']]).T,'euclidean')
+
+min_distance = np.amin(distances,axis=1)
+min_distance_index = np.argmin(distances, axis=1)
+spx_list = np.zeros((len(df1['RA']),1))
+spx_err_list = np.zeros((len(df1['RA']),1))
+flux_error1 = np.zeros((len(df1['RA']),1))
+flux_error2 = np.zeros((len(df2['RA']),1))
+
+mf1 = np.zeros((len(df1['RA']),1),dtype=bool)	# is there data available for the source at another frequency?
+
+
+
+# Find Spectral indices if sources are close enough to be considered the same. Identify thermal sources
+
+freq_ratio = np.log( max(freq1,freq2) / min(freq2,freq1) );
+
+# Get better flux errors first - using method from Rachael's thesis without the additional rms term
+
+for i in range(len(df1['RA'])):
+	flux_error1[i] = np.sqrt(df1['E_Total_flux'][i]**2 + (0.05*df1['Total_flux'][i])**2)
+
+for i in range(len(df2['RA'])):
+	flux_error2[i] = np.sqrt(df2['E_Total_flux'][i]**2 + (0.05*df2['Total_flux'][i])**2)
+
+for i in range(len(df1['RA'])):
+	if(min_distance[i] < radius):
+		mf1[i] = True
+		if freq1 > freq2:
+			spx = np.log( df1['Total_flux'][i] / df2['Total_flux'][min_distance_index[i]] ) / freq_ratio
+		else:
+			spx = np.log( df2['Total_flux'][min_distance_index[i]] / df1['Total_flux'][i] ) / freq_ratio
+		spx_list[i] = spx
+		spx_err_list[i] = np.sqrt( (flux_error1[i] / df1['Total_flux'][i] )**2 + (flux_error2[min_distance_index[i]] / df2['Total_flux'][min_distance_index[i]] )**2 ) / np.abs(freq_ratio)
+	else:
+		spx_list[i] = -999
+		spx_err_list[i] = -999
+
+# Get the normal RA and DEC coords for all sources
+
+sra_dec = deg_to_sexagesimal(df1)
+sra_dec2 = deg_to_sexagesimal(df2)
+
+# Identify any thermal sources
+
+for i in range(len(df1['RA'])):
+	if( spx_list[i] > 0):
+		print('Thermal source detected: '+str(df1['Source_id'][i])+'. Coords: '+sra_dec[i]+'. Spectral Index = '+str(spx_list[i])+' +/- '+str(spx_err_list[i]))
+		print('Thermal source number2a: '+str(df2['Source_id'][min_distance_index[i]])+'. Coords: '+sra_dec2[min_distance_index[i]])
+		print('\t '+str(freq1)+' Hz flux = '+str(df1['Total_flux'][i])+' +/- '+str(flux_error1[i]))
+		print('\t '+str(freq2)+' Hz flux = '+str(df2['Total_flux'][min_distance_index[i]])+' +/- '+str(flux_error2[min_distance_index[i]]))
+
+
+
+
+# Now write new catalog with spectral indices
+
+format_line = 'format = Name, Ra, Dec, I, SpectralIndex=\'[]\', SpectralIndexError=\'[]\', S_Code, Resolved'
+
+with open(outputname,'w') as f:
+	f.write('# catalog\n')
+	f.write('# Generated by make_catalog.py.\n')
+	f.write(format_line)
+	f.write('\n')
+
+
+	for i in range(len(df1['RA'])):
+		f.write(str(df1[ 'Source_id' ][i]))
+		f.write(', '+sra_dec[i])
+		f.write(', '+str(df1[ 'Total_flux' ][i]))
+		f.write(', '+str(df1[ 'E_Total_flux' ][i]))
+		f.write(', '+str(spx_list[i]))
+		f.write(', '+str(spx_err_list[i]))
+		f.write(', '+str(df1[ 'S_Code' ][i]))
+		f.write('\n')
+
+print('Spectral index catalog complete.')

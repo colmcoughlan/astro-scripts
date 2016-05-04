@@ -1,0 +1,8 @@
+msin.datacolumn = CORRECTED_DATA
+msout.datacolumn = CORRECTED_DATA
+steps=[flaghigh]
+
+flaghigh.type='preflag'
+
+flaghigh.mode='set'
+flaghigh.amplmax=40

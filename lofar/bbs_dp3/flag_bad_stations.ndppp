@@ -1,0 +1,10 @@
+msin.datacolumn = DATA
+msout.datacolumn = DATA
+steps=[ flagant]
+
+flagant.type='preflag'
+
+flagant.mode='set'
+flagant.chan=[0,1,2,3]
+#flagant.baseline=*RS409*;*DE601*;*DE602*
+flagant.baseline=*DE601*;*DE602*

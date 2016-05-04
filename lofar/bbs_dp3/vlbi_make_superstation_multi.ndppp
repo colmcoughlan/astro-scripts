@@ -1,0 +1,18 @@
+msin.datacolumn = CORRECTED_DATA
+
+steps=[add , filter]
+
+add.type = stationadder
+add.stations = {TS001:['CS*']}
+add.average = True
+add.useweights = True
+
+#flag.type=preflagger	# It was recommended to flag before filtering, but it seemed to cause problems. Filtering alone seems to work fine.
+#flag.baseline=CS*&&*
+
+
+filter.type='filter'
+filter.startchan=0
+filter.nchan=0
+filter.baseline=!CS*&&*
+filter.remove=true

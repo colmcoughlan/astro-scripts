@@ -1,0 +1,12 @@
+msin.datacolumn = CORRECTED_DATA
+
+steps=[phase_shift , averager]
+
+phase_shift.type = phaseshifter
+
+phase_shift.phasecenter=[04h20m22.025 , +17d53m56.062]
+
+averager.timestep=6
+
+averager.freqstep=4
+

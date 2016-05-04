@@ -1,0 +1,8 @@
+msin.datacolumn = DATA
+steps=[flagant]
+
+flagant.type='preflag'
+
+flagant.mode='set'
+flagant.chan=[2,3]
+flagant.baseline=*RS409*

@@ -1,0 +1,5 @@
+msin.datacolumn = CORRECTED_DATA
+steps=[aof]
+
+aof.type='aoflagger'
+

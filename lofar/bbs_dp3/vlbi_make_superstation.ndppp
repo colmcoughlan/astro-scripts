@@ -1,0 +1,8 @@
+msin.datacolumn = CORRECTED_DATA
+
+steps=[add]
+
+add.type = stationadder
+add.stations = {TS001:[CS*]}
+add.average = True
+add.useweights = False

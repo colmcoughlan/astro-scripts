@@ -1,0 +1,17 @@
+Strategy.InputColumn = CORRECTED_DATA
+Strategy.TimeRange = []
+Strategy.Baselines = [CR]S*&
+Strategy.ChunkSize = 0
+Strategy.UseSolver = F
+Strategy.Steps = [ subtract ]
+#
+#
+# Strategy.Baselines = CS*&
+#
+#
+#
+#
+Step.subtract.Operation = SUBTRACT
+Step.subtract.Model.Sources = []
+Step.subtract.Output.Column = CORRECTED_DATA
+

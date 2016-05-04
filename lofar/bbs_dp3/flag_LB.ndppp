@@ -1,0 +1,13 @@
+msin.datacolumn = DATA
+steps=[flagLB]
+
+flagLB.type='preflag'
+
+flagLB.mode='setcomplement'
+flagLB.baseline=CS*&;RS*&;RS*&CS*;CS*&RS*
+
+#flagant.type='preflag'
+
+#flagant.mode='set'
+#flagant.chan=[0,1,2,3]
+#flagant.baseline=*RS409*

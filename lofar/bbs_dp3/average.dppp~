@@ -1,0 +1,7 @@
+msin.datacolumn = CORRECTED_DATA
+  
+steps=[averager]
+
+averager.timestep=1	#	This will average 5s to 10s
+
+averager.freqstep=4

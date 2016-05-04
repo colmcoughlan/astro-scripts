@@ -1,0 +1,81 @@
+Strategy.InputColumn = CORRECTED_DATA
+Strategy.TimeRange = []
+Strategy.Baselines = *
+Strategy.ChunkSize = 72
+Strategy.UseSolver = F
+Strategy.Steps = [ dragon_solve, dragon_subtract, solve , correct ]
+#
+#
+#
+#
+#
+Step.dragon_solve.Operation = SOLVE
+Step.dragon_solve.Model.Sources = [3C123]
+Step.dragon_solve.Model.Cache.Enable = T
+Step.dragon_solve.Baselines = *
+Step.dragon_solve.Model.DirectionalGain.Enable = T
+Step.dragon_solve.Model.Beam.Enable = T
+Step.dragon_solve.Model.Clock.Enable = T
+Step.dragon_solve.Solve.Mode = COMPLEX
+Step.dragon_solve.Solve.Parms = ["DirectionalGain:0:0:*","DirectionalGain:1:1:*"]
+Step.dragon_solve.Solve.ExclParms = []
+Step.dragon_solve.Solve.CalibrationGroups = []
+Step.dragon_solve.Solve.CellSize.Freq = 1
+Step.dragon_solve.Solve.CellSize.Time = 1	# Try get a good solution on the dragon (at least it's bright...)
+Step.dragon_solve.Solve.CellChunkSize = 72
+Step.dragon_solve.Solve.PropagateSolutions = F
+#
+#
+#
+#
+#
+Step.dragon_subtract.Operation = SUBTRACT
+Step.dragon_subtract.Model.Sources = [3C123]
+Step.dragon_subtract.Model.DirectionalGain.Enable = T
+Step.dragon_subtract.Model.Beam.Enable = T
+Step.dragon_subtract.Model.Clock.Enable = T
+#
+#
+#
+#
+#
+Step.solve.Operation = SOLVE
+Step.solve.Model.Sources = [DG*]
+Step.solve.Model.Cache.Enable = T
+Step.solve.Baselines = *
+Step.solve.Model.Phasors.Enable = T
+Step.solve.Model.Gain.Enable = T
+Step.solve.Model.Beam.Enable = T
+Step.solve.Model.Clock.Enable = T
+Step.solve.Solve.Mode = COMPLEX
+Step.solve.Solve.Parms = ["Gain:0:0:Phase:*","Gain:1:1:Phase:*"]
+Step.solve.Solve.ExclParms = []
+Step.solve.Solve.CalibrationGroups = []
+Step.solve.Solve.CellSize.Freq = 4
+Step.solve.Solve.CellSize.Time = 2	# Assume 5 sec, 4 chan integrated data. => 10s, 1 solution per SB
+Step.solve.Solve.CellChunkSize = 72
+Step.solve.Solve.PropagateSolutions = F
+#
+#
+#
+Step.solve.Solve.Options.MaxIter = 1000
+Step.solve.Solve.Options.EpsValue = 1e-9
+Step.solve.Solve.Options.EpsDerivative = 1e-9
+Step.solve.Solve.Options.ColFactor = 1e-9
+Step.solve.Solve.Options.LMFactor = 1.0
+Step.solve.Solve.Options.BalancedEqs = F
+Step.solve.Solve.Options.UseSVD = T
+#
+#
+#
+#
+#
+Step.correct.Operation = CORRECT
+Step.correct.Model.Sources = []
+Step.correct.Model.Phasors.Enable = T
+Step.correct.Model.Gain.Enable = T
+Step.correct.Model.Beam.Enable = T
+Step.correct.Model.Clock.Enable = T			######## 			BEAM IS CURRENTLY ON  !!!!!!!!!!!!!!!!!!
+Step.correct.Output.Column = CORRECTED_DATA
+
+

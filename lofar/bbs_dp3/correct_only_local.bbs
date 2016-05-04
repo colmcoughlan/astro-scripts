@@ -1,0 +1,19 @@
+Strategy.InputColumn = DATA
+Strategy.TimeRange = []
+Strategy.Baselines = [CR]S*&
+Strategy.ChunkSize = 0
+Strategy.UseSolver = F
+Strategy.Steps = [ correct ]
+#
+#
+# Strategy.Baselines = CS*&
+#
+#
+#
+#
+Step.correct.Operation = CORRECT
+Step.correct.Model.Sources = []
+Step.correct.Model.Phasors.Enable = T
+Step.correct.Model.Gain.Enable = T
+Step.correct.Output.Column = CORRECTED_DATA
+

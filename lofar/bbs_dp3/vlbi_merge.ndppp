@@ -1,0 +1,4 @@
+msin.datacolumn = DATA
+msin.missingdata = True
+msin.orderms = False
+steps = []
