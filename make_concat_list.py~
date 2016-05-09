@@ -9,7 +9,7 @@ if(len(sys.argv)<4):
 else:
 	stem = str(sys.argv[1])
 	ending = str(sys.argv[2])
-	ndirs = len(sys.argv)-3
+	ndirs = len(sys.argv-3)
 	inputdirs=[[] for _ in range(ndirs)]
 
 	for i in range(ndirs):
