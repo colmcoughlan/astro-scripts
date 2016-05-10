@@ -447,10 +447,10 @@ df2['E_DC_Min'] = df2['E_Min']*3600.0
 # Get better flux errors first - using method from Rachael's thesis without the additional rms term
 
 df1['E_Total_flux'] = np.sqrt(df1['E_Total_flux'].values**2 + (0.05*df1['Total_flux'].values)**2)
-df1['E_Peak_flux'] = np.sqrt(df1['E_Peak_flux'].values**2 + (0.05*df1['Total_flux'].values)**2)
+df1['E_Peak_flux'] = np.sqrt(df1['E_Peak_flux'].values**2 + (0.05*df1['Peak_flux'].values)**2)
 
 df2['E_Total_flux'] = np.sqrt(df2['E_Total_flux'].values**2 + (0.05*df2['Total_flux'].values)**2)
-df2['E_Peak_flux'] = np.sqrt(df2['E_Peak_flux'].values**2 + (0.05*df2['Total_flux'].values)**2)
+df2['E_Peak_flux'] = np.sqrt(df2['E_Peak_flux'].values**2 + (0.05*df2['Peak_flux'].values)**2)
 
 
 # Insert frequency columns
@@ -1177,3 +1177,4 @@ print(str(nmatches)+' matches detected.')
 print(str(len(df1))+' sources in file 1, freq = '+str(freq1/1.0E6)+' MHz')
 
 print(str(len(df2))+' sources in file 2, freq = '+str(freq2/1.0E6)+' MHz')
+print('This implies '+str(len(df1) + len(df2) - nmatches)+' unique detections.')
