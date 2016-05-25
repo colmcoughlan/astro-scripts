@@ -1,0 +1,16 @@
+#!/bin/bash
+#PBS -l nodes=2:ppn=24
+#PBS -l walltime=03:29:00
+#PBS -N prefactor_test
+#PBS -A dsast016b
+#PBS -r n
+#PBS -j oe
+
+export OMP_NUM_THREADS=24
+export cluster_desc_file='/ichec/home/users/coughlan/storage/lofar_software/share/fionn.clusterdesc'	# MUST be defined to run on Fionn
+
+source /ichec/work/dsast016b/setup.sh
+python /ichec/work/dsast016b/scripts/make_cluster_desc.py
+mpirun -np 1 --map-by node genericpipeline.py /ichec/home/users/coughlan/storage/parsets/Pre-Facet-Cal.parset
+
+echo "Test complete"

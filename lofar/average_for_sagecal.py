@@ -18,6 +18,8 @@ nsb=int(environ['num_subbands'])
 lstart=int(environ['l_start'])
 lend=int(environ['l_end'])
 
+scanint = 8
+
 
 ending='-10_uv.dppp.pre-cal.ms'
 
@@ -40,9 +42,9 @@ print('Averaging to 10s and 1 channel for distributed sagecal.')
 ps=[]
 for s in range(nsb):
 	csb = sb + s
-	for i in range(lstart,lend+1,3):
+	for i in range(lstart,lend+1,scanint):
 		fn = od+'L'+str(i)+'_SBgr%03d'%csb+ending
-		cmdstr = 'NDPPP '+sd+'average.dppp averager.timestep=2 averager.freqstep=2 msin='+fn+' msin.datacolumn=CORRECTED_DATA msout='+wd+'L'+str(i)+'_SBgr%03d'%csb+ending+' msout.datacolumn=DATA > '+log_dir+'L'+str(i)+'_SB%03d'%csb+'_avg.dppp.log'
+		cmdstr = 'NDPPP '+sd+'average.dppp averager.timestep=2 averager.freqstep=1 msin='+fn+' msin.datacolumn=CORRECTED_DATA msout='+wd+'L'+str(i)+'_SBgr%03d'%csb+ending+' msout.datacolumn=DATA > '+log_dir+'L'+str(i)+'_SB%03d'%csb+'_avg.dppp.log'
 		print(cmdstr)
 		p = Popen(cmdstr, shell=True)
 		ps.append(p)
@@ -54,7 +56,7 @@ ps=[]
 print('Adding imaging columns.')
 for s in range(nsb):
 	csb = sb + s
-	for i in range(lstart,lend+1,3):
+	for i in range(lstart,lend+1,scanint):
 		cmdstr = 'addImagingColumns.py '+wd+'L'+str(i)+'_SBgr%03d'%csb+ending+' > '+log_dir+'L'+str(i)+'_SB%03d'%csb+'_addImagingColumn.log'
 		print(cmdstr)
 		p = Popen(cmdstr, shell=True)

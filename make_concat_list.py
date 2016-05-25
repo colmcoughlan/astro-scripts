@@ -20,7 +20,7 @@ concatlist=[]
 for inputdir in inputdirs:
 	for file in os.listdir(inputdir):
 	    if fnmatch.fnmatch(file, stem+'*'+ending):
-		concatlist.append(file)
+		concatlist.append(inputdir+'/'+file)
 
 with open('concat_list.txt', 'w') as f:
         f.write(str(concatlist)+'\n')
