@@ -31,7 +31,7 @@ def plugin_main(args, **kwargs):
     result = {}
     mapfiles = (kwargs['mapfiles'][1:-1]).split(',')    # read in list of mapfiles from string (separated by commas)
     mapfile_dir = kwargs['mapfile_dir']
-    head_only = (kwargs['head_node_only'] in ['True','true','T','t','1'])
+    head_node_only = (kwargs['head_node_only'] in ['True','true','T','t','1'])
     fn_list=[]
     for mf in mapfiles:
         fn_list.append( os.path.join(mapfile_dir,mf) )
