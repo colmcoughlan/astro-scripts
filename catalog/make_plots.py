@@ -190,7 +190,7 @@ for i in range(len(stems)):
 df = pd.concat(frame_list)
 
 data = df['SI'].values
-mean, sigma = np.mean(data), np.std(data)
+median, sigma = np.median(data), np.std(data)
 xmin = np.min(data)
 xmax = np.max(data)
 step = 30
@@ -198,7 +198,7 @@ step = 30
 hist, bin_edges = np.histogram(data, bins=np.linspace(xmin, xmax, step))
 plt.bar(bin_edges[:-1], hist, width = np.abs((xmax-xmin)/step))
 plt.xlim(min(bin_edges), max(bin_edges))
-print 'Mean alpha_GMRT = '+str(mean)
+print('Median alpha_GMRT = '+str(median)+' +/- '+str(sigma))
 plt.xlabel(r'$\mathrm{\alpha_{GMRT}}$')
 plt.ylabel(r'$\mathrm{N}$')
 plt.savefig(args.output+name+'_alpha_gmrt.eps')
@@ -217,7 +217,7 @@ df = pd.concat(frame_list)
 data = df['NVSS_SI'].values
 #weights = df['NVSS_E_SI'].values
 #weights = 1.0/np.power(weights,2.0)
-mean, sigma = np.mean(data), np.std(data)
+median, sigma = np.median(data), np.std(data)
 step = 30
 
 data_both = df.loc[df['NVSS_SI_FP']=='B','NVSS_SI'].values
@@ -239,7 +239,7 @@ plt.bar(bin_edges[:-1], hist2, width = np.abs((xmax-xmin)/step), bottom = hist1)
 #hist, bin_edges = np.histogram(data, bins=np.linspace(xmin, xmax, step))
 #plt.bar(bin_edges[:-1], hist, width = np.abs((xmax-xmin)/step))
 plt.xlim(min(bin_edges), max(bin_edges))
-print 'Mean alpha_GMRT_NVSS = '+str(mean)
+print('Median alpha_GMRT_NVSS = '+str(median)+' +\ '+str(sigma))
 plt.xlabel(r'$\mathrm{\alpha_{GMRT-NVSS}}$')
 plt.ylabel(r'$\mathrm{N}$')
 plt.legend([r'$\mathrm{3\,point}$',r'$\mathrm{2\,point}$'])
@@ -374,12 +374,12 @@ print('Correcting 608 by '+str(corr2))
 for i in range(len(peakmeans)):
 	if(peakmeans[i] < (7.0 * central_rms1)):
 		counts[i] = counts[i] * corr1 * ( (6.0 * central_rms1)/peakmeans[i] )
-		print 'wow'
+		print 'Correcting 323 MHz bin'
 		
 for i in range(len(peakmeans2)):
 	if(peakmeans2[i] < (7.0 * central_rms2)):
 		counts2[i] = counts2[i] * corr2 * ( (6.0 * central_rms2)/peakmeans2[i] )
-		print 'wow2'
+		print 'Correcting 608 MHz bin'
 
 dstep=np.zeros((len(bin_edges)-1,1))
 dstep2=np.zeros((len(bin_edges)-1,1))
