@@ -11,12 +11,12 @@
 #   doesn't work on multiple nodes on CEP-2 or CEP3.)
 
 ### First run this and check the generated plots! Modify and re-run if neccessary.
-pipeline.steps=[createmap_cal, fionn_createmap_cal, ndppp_prep_cal, calib_cal, h5_imp_map, h5imp_cal, fitclock, ampl, plots, phase]
+pipeline.steps=[createmap_cal, fionn_createmap_cal, ndppp_prep_cal, calib_cal, fionn_h5_imp_map, h5_imp_map, h5imp_cal, fitclock, ampl, plots, phase]
 ### When calibrator processing is done, you can do the processing of the target data.
 ### Either by using the same pipeline and running this:
-# pipeline.steps=[ createmap_cal, ndppp_prep_cal, calib_cal, h5_imp_map, h5imp_cal, fitclock, ampl, plots, phase, createmap_target, ndppp_prep_target, trans, parmmap, calibtarget, dpppaverage, ateamtarget, ateamcliptar, sortmap_tar, dpppconcat, gsmcalibtarget, gsmcal_parmmap, plot_gsm_phases, make_results_mapfile, move_results, createmap_plots, copy_plots]
+# pipeline.steps=[ createmap_cal, ndppp_prep_cal, calib_cal, h5_imp_map, h5imp_cal, fitclock, ampl, plots, phase, createmap_target, fionn_createmap_target, ndppp_prep_target, trans, parmmap, calibtarget, dpppaverage, ateamtarget, ateamcliptar, sortmap_tar, fionn_sortmap, dpppconcat, gsmcalibtarget, gsmcal_parmmap, fionn_gsmcal_parmmap, plot_gsm_phases, make_results_mapfile, move_results, createmap_plots, copy_plots]
 ### Or by copying the *.npy files from the calibrator and running this:
-# pipeline.steps=[createmap_target, ndppp_prep_target, trans, parmmap, calibtarget, dpppaverage, ateamtarget, ateamcliptar, sortmap_tar, dpppconcat, gsmcalibtarget, gsmcal_parmmap, plot_gsm_phases, make_results_mapfile, move_results, createmap_plots, copy_plots]
+# pipeline.steps=[createmap_target, fionn_createmap_target, ndppp_prep_target, trans, parmmap, calibtarget, dpppaverage, ateamtarget, ateamcliptar, sortmap_tar, fionn_sortmap, dpppconcat, gsmcalibtarget, gsmcal_parmmap, fionn_gsmcal_parmmap, plot_gsm_phases, make_results_mapfile, move_results, createmap_plots, copy_plots]
 
 
 # parameters you will need to adjust.
@@ -63,8 +63,9 @@ createmap_cal.control.pattern         =   {{ cal_input_pattern }}
 # change the hosts for Fionn data reduction
 fionn_createmap_cal.control.kind            =   plugin
 fionn_createmap_cal.control.type            =   fionnMPI
-fionn_createmap_cal.control.mapfile         =   createmap_cal.mapfile
+fionn_createmap_cal.control.mapfiles        =   [createmap_cal.mapfile]
 fionn_createmap_cal.control.mapfile_dir     =   input.output.mapfile_dir
+fionn_createmap_cal.control.head_node_only  =   False
 
 # run NDPPP on the calibrator data
 ndppp_prep_cal.control.type                    = dppp
@@ -95,7 +96,14 @@ calib_cal.control.error_tolerance  =  {{ error_tolerance }}
 calib_cal.argument.force           =  True 
 calib_cal.argument.observation     =  ndppp_prep_cal.output.mapfile  # mapfile for the NDPPP-ed calibrator data
 calib_cal.argument.parset          =  {{ calib_cal_parset }}  
-calib_cal.argument.catalog         =  {{ calibrator_skymodel }}     
+calib_cal.argument.catalog         =  {{ calibrator_skymodel }}
+
+# change the hosts for Fionn data reduction (head node only)
+fionn_h5_imp_map.control.kind            =   plugin
+fionn_h5_imp_map.control.type            =   fionnMPI
+fionn_h5_imp_map.control.mapfiles        =   [ndppp_prep_cal.output.mapfile]
+fionn_h5_imp_map.control.mapfile_dir     =   input.output.mapfile_dir
+fionn_h5_imp_map.control.head_node_only  =   True
 
 # generate a mapfile with all files in a single entry
 h5_imp_map.control.kind               =  plugin
@@ -162,6 +170,13 @@ createmap_target.control.filename        =   createmap_target.mapfile
 createmap_target.control.folder          =   {{ target_input_path }}
 createmap_target.control.pattern         =   {{ target_input_pattern }}
 
+# change the hosts for Fionn data reduction
+fionn_createmap_target.control.kind            =   plugin
+fionn_createmap_target.control.type            =   fionnMPI
+fionn_createmap_target.control.mapfiles        =   [createmap_target.mapfile]
+fionn_createmap_target.control.mapfile_dir     =   input.output.mapfile_dir
+fionn_createmap_target.control.head_node_only  =   False
+
 # run NDPPP on the target data
 ndppp_prep_target.control.type                    = dppp
 ndppp_prep_target.control.max_per_node            = 10                   # \ feel free to adjust these two values to match your system
@@ -184,7 +199,7 @@ ndppp_prep_target.argument.flagamp.amplmin        = 1e-30
 # generate parmDB with the interpolated calibrator data to apply to the traget
 trans.control.type            = pythonplugin
 trans.control.executable      = {{ transfer_script }}
-trans.control.max_per_node    =  20                                 # feel free to adjust this value to match your system
+trans.control.max_per_node    =  24                                 # feel free to adjust this value to match your system
 trans.control.error_tolerance = {{ error_tolerance }}
 # order for flags is: [<input-filenames>,<output-filename-base>,<extension_for_new_parmDBs>]
 trans.argument.flags          = [ndppp_prep_target.output.mapfile,caldata_transfer,/instrument_amp_clock_offset]
@@ -227,7 +242,7 @@ dpppaverage.argument.avg.freqstep           = {{ avg_freqstep }}       # average
 
 # run BBS to predict the A-Team contribution
 ateamtarget.control.type             =  python-calibrate-stand-alone  
-ateamtarget.control.max_per_node     =  20                          # feel free to adjust this value to match your system  
+ateamtarget.control.max_per_node     =  24                          # feel free to adjust this value to match your system  
 ateamtarget.control.error_tolerance  =  {{ error_tolerance }}
 ateamtarget.argument.force           =  True 
 ateamtarget.argument.observation     =  dpppaverage.output.mapfile
@@ -254,6 +269,13 @@ sortmap_tar.control.numSB           =   {{ num_SBs_per_group }}
 sortmap_tar.control.NDPPPfill       =   True
 sortmap_tar.control.startFromZero   =   True   # This means that groups (and group-names) are done with SB000 as a reference
 sortmap_tar.control.truncateLastSBs =   True   # This means that a excess subbands that don't make a full group get discarded
+
+# change the hosts for Fionn data reduction (need to make it more efficient). Operate on both groupmap and inputmap
+fionn_sortmap.control.kind            =   plugin
+fionn_sortmap.control.type            =   fionnMPI
+fionn_sortmap.control.mapfiles        =   [sortmap_tar.output.mapfile,sortmap_tar.output.groupmap]
+fionn_sortmap.control.mapfile_dir     =   input.output.mapfile_dir
+fionn_sortmap.control.head_node_only  =   False
 
 # run NDPPP to concatenate the target
 dpppconcat.control.type                    =  dppp
@@ -294,6 +316,13 @@ gsmcal_parmmap.control.add_suffix_to_file =  /instrument_directionindependent
 gsmcal_parmmap.control.mapfile_dir        =  input.output.mapfile_dir
 gsmcal_parmmap.control.filename           =  gsmcal_parmdbs.mapfile
 
+# change the hosts for Fionn data reduction
+fionn_gsmcal_parmmap.control.kind            =   plugin
+fionn_gsmcal_parmmap.control.type            =   fionnMPI
+fionn_gsmcal_parmmap.control.mapfiles        =   [gsmcal_parmmap.output.mapfile,dpppconcat.output.mapfile]
+fionn_gsmcal_parmmap.control.mapfile_dir     =   input.output.mapfile_dir
+fionn_gsmcal_parmmap.control.head_node_only  =   False
+
 # plot the phase solutions from the phase-only calibration of the target
 plot_gsm_phases.control.kind               =  recipe
 plot_gsm_phases.control.type               =  executable_args
@@ -317,7 +346,7 @@ make_results_mapfile.control.new_suffix      =  .pre-cal.ms
 move_results.control.kind               =  recipe
 move_results.control.type               =  executable_args
 move_results.control.executable         =  /bin/mv
-move_results.control.max_per_node       =  20                                 # feel free to adjust this value to match your system
+move_results.control.max_per_node       =  24                                 # feel free to adjust this value to match your system
 move_results.control.mapfiles_in        =  [dpppconcat.output.mapfile, make_results_mapfile.output.mapfile]
 move_results.control.inputkeys          =  [source,destination]
 move_results.control.arguments          =  [source,destination]
@@ -331,11 +360,18 @@ createmap_plots.control.filename        =   diagnostic_plots.mapfile
 createmap_plots.control.folder          =   input.output.working_directory/input.output.job_name
 createmap_plots.control.pattern         =   *.png
 
+# change the hosts for Fionn data reduction
+fionn_createmap_plots.control.kind            =   plugin
+fionn_createmap_plots.control.type            =   fionnMPI
+fionn_createmap_plots.control.mapfiles        =   [createmap_plots.output.mapfile]
+fionn_createmap_plots.control.mapfile_dir     =   input.output.mapfile_dir
+fionn_createmap_plots.control.head_node_only  =   False
+
 # copy the diagnostic plots to the results_directory
 copy_plots.control.kind               =  recipe
 copy_plots.control.type               =  executable_args
 copy_plots.control.executable         =  /bin/cp
-copy_plots.control.max_per_node       =  20                                 # feel free to adjust this value to match your system
+copy_plots.control.max_per_node       =  24                                 # feel free to adjust this value to match your system
 copy_plots.control.mapfile_in         =  createmap_plots.output.mapfile
 copy_plots.control.inputkey           =  source
 copy_plots.control.arguments          =  [source,{{ results_directory }}]
