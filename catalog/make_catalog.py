@@ -34,14 +34,26 @@ def deg_to_sexagesimal(df,delim,doround=-1):
 
 	if(doround>0):	# doround specifies number of degrees of precision in DEC. Use one more in RA (as it is less precise).
 		if doround==1:
-			for i in range(len(df['RA'])):
-				coords.append(('%02d:%02d:%05.2f'%(hrs.iloc[i],minutes_ra.iloc[i],seconds_ra.iloc[i]))+delim+'+%02d:%02d:%04.1f'%(deg.iloc[i],minutes_dec.iloc[i],seconds_dec.iloc[i]))
+			prec = ['%05.2f','%04.1f']
 		if doround==2:
-			for i in range(len(df['RA'])):
-				coords.append(('%02d:%02d:%06.3f'%(hrs.iloc[i],minutes_ra.iloc[i],seconds_ra.iloc[i]))+delim+'+%02d:%02d:%05.2f'%(deg.iloc[i],minutes_dec.iloc[i],seconds_dec.iloc[i]))
+			prec = ['%06.3f','%05.2f']
 	else:
-		for i in range(len(df['RA'])):
-			coords.append(('%02d:%02d:%09f'%(hrs.iloc[i],minutes_ra.iloc[i],seconds_ra.iloc[i]))+delim+'%02d:%02d:%09f'%(deg.iloc[i],minutes_dec.iloc[i],seconds_dec.iloc[i]))
+		prec = ['%09f','%09f']
+
+	for i in range(len(df['RA'])):
+		if((prec[0]%seconds_ra.iloc[i]) == prec[0]%60):	# watch out for rounding 60sec, 60min etc.
+			seconds_ra.iloc[i] = 0.0
+			minutes_ra.iloc[i] = minutes_ra.iloc[i] + 1
+		if((prec[0]%minutes_ra.iloc[i]) == prec[0]%60):
+			minutes_ra.iloc[i] = 0.0
+			hrs.iloc[i] = hrs.iloc[i] + 1
+		if((prec[1]%seconds_dec.iloc[i]) == prec[1]%60):
+			seconds_dec.iloc[i] = 0.0
+			minutes_dec.iloc[i] = minutes_dec.iloc[i] + 1
+		if((prec[1]%minutes_dec.iloc[i]) == prec[1]%60):
+			minutes_dec.iloc[i] = 0.0
+			deg.iloc[i] = deg.iloc[i] + 1
+		coords.append(( ('%02d:%02d:'+prec[0])%(hrs.iloc[i],minutes_ra.iloc[i],seconds_ra.iloc[i]))+delim+('+%02d:%02d:'+prec[1])%(deg.iloc[i],minutes_dec.iloc[i],seconds_dec.iloc[i]))
 
 	return(coords)
 
@@ -54,8 +66,8 @@ def sexagesimal_to_deg(ra_list, dec_list):
 	
 	# Calculte the spectral index and error as normal
 def gen_spec_indx(flux1, flux2, flux1_err, flux2_err, freq1, freq2):
-	freq_ratio = np.log(freq2/freq1)
-	spec_indx = np.divide(np.log( np.divide(flux2 , flux1 ) ) , freq_ratio)
+	freq_ratio = np.log10(freq2/freq1)
+	spec_indx = np.divide(np.log10( np.divide(flux2 , flux1 ) ) , freq_ratio)
 	spec_indx_err = np.sqrt( (flux1_err / flux1 )**2 + (flux2_err / flux2 )**2 ) / np.abs(freq_ratio)
 	return(spec_indx , spec_indx_err)
 	
@@ -237,7 +249,7 @@ def read_nvss(filename, n):
 	return(have_detection, flux, flux_error, ra, dec)
 	
 def read_vizier(cat_name, nskip, col_list):
-	df = pd.read_csv(cat_name,skiprows=nskip,delimiter='\t', engine='python')
+	df = pd.read_csv(cat_name,skiprows=nskip,delimiter='\t', engine='python', comment='#')
 	return(df[col_list])
 
 ###############################
@@ -255,10 +267,9 @@ parser.add_argument('phase_centre', type=str, help='Phase centre. Form: \'12 34 
 parser.add_argument('radius', type=float, help='Maximum separation assumed to be in as.')
 parser.add_argument('output_stem', type=str, help='Stem for output files.')
 parser.add_argument('--nvss', type=str, help='NVSS detection printout.')
-parser.add_argument('--xmm', type=str, help='XMM vizier file.')
-parser.add_argument('--xmm_extra', type=str, help='XMM extra vizier file (targeted observations?).')
+parser.add_argument('--xest', type=str, help='XEST vizier file.')
 parser.add_argument('--mass', type=str, help='2MASS vizier file.')
-parser.add_argument('--spitzer', type=str, help='Spitzer vizier file.')
+parser.add_argument('--spitzer', type=str, help='Spitzer C2E vizier file.')
 parser.add_argument('--gbs', type=str, help='Gould Belt survey vizier file.')
 parser.add_argument('--gbs_counterparts', type=str, help='Gould Belt survey contourparts vizier file.')
 parser.add_argument('--aclass', type=str, help='Additional classification list.')
@@ -300,21 +311,13 @@ if(args.nvss is not None):
 else:
 	have_nvss = False
 	
-# xmm
+# xmm (XEST)
 
-if(args.xmm is not None):
+if(args.xest is not None):
 	have_xmm = True
-	xmm_file = args.xmm
+	xmm_file = args.xest
 else:
 	have_xmm = False
-	
-# xmm extra (targeted observations?)
-
-if(args.xmm_extra is not None):
-	have_xmm_extra = True
-	xmm_extra_file = args.xmm_extra
-else:
-	have_xmm_extra = False
 	
 # 2MASS
 
@@ -695,8 +698,8 @@ if(have_nvss):
 	spec_indx = np.zeros((len(f1_array),1))
 	spec_indx_err = np.zeros((len(f1_array),1))
 	
-	x = np.log(np.array([freq1,freq2,nvss_freq]))
-	y = np.log(np.array([f1_array,f2_array, f3_tf]))
+	x = np.log10(np.array([freq1,freq2,nvss_freq]))
+	y = np.log10(np.array([f1_array,f2_array, f3_tf]))
 	
 	# the uncertainty should take the log into account (y = log(x), delta_y = delta_x/x)
 	weights = np.array([np.divide(f1_e_array,f1_array), np.divide(f2_e_array,f2_array), np.divide(f3_e_tf,f3_tf)])
@@ -829,24 +832,6 @@ if have_xmm:
 	else:
 		print('\t No XMM survey matches detected...')
 	
-if have_xmm_extra:
-	vcat_df = read_vizier(xmm_extra_file, 0,['_RAJ2000','_DEJ2000'])
-	vcat_df = vcat_df.drop(vcat_df.index[0:2])	# clip units line and ----- line
-	vcat_df.reset_index(inplace=True, drop=True)
-	vcat_df.reindex(index=range(0,len(vcat_df)))
-	
-	distances = scipy.spatial.distance.cdist(np.array([dfc['RA'],dfc['DEC']]).T , np.array([vcat_df['_RAJ2000'], vcat_df['_DEJ2000']]).T,'euclidean')
-	min_dist = np.amin(distances,axis=1)
-	min_dist_index = np.argmin(distances,axis=1)
-	dfc['XMM_Extra'] =  min_dist<gbs_radius
-	if np.sum(dfc['XMM_Extra'].values)>0:
-		print('\tDetected XMM_Extra survey matches')
-#		t1 = dfc.loc[dfc['XMM_Extra'], 'S_Ra_Dec'].values
-#		for i in range(len(t1)):
-#			print(str(t1[i]))
-	else:
-		print('\t No XMM_extra survey matches detected...')
-	
 if have_mass:
 	vcat_df = read_vizier(mass_file, 0,['_RAJ2000','_DEJ2000'])
 	vcat_df = vcat_df.drop(vcat_df.index[0:2])	# clip units line and ----- line
@@ -965,8 +950,8 @@ df2.to_csv(outputname+'_freq2.island_residuals.csv',columns=['Resid_Isl_rms'],in
 dfc[['RA','DEC']].to_csv(outputname+'_positions.csv')
 
 if(have_nvss):
-	dfc.loc[np.all([dfc['NVSS'], dfc['Freq']==freq1],axis=0),['NVSS_RA_offset','NVSS_DEC_offset']].to_csv(outputname+'_freq1.nvss_offset.csv')
-	dfc.loc[np.all([dfc['NVSS'], dfc['Freq']==freq2],axis=0),['NVSS_RA_offset','NVSS_DEC_offset']].to_csv(outputname+'_freq2.nvss_offset.csv')
+	dfc.loc[np.all([dfc['NVSS'], dfc['Freq']==freq1, dfc['S_Code'] == 'S', dfc['Peak_flux'] > 20.0*dfc['Resid_Isl_rms']],axis=0),['NVSS_RA_offset','NVSS_DEC_offset']].to_csv(outputname+'_freq1.nvss_offset.csv')
+	dfc.loc[np.all([dfc['NVSS'], dfc['Freq']==freq2, dfc['S_Code'] == 'S', dfc['Peak_flux'] > 20.0*dfc['Resid_Isl_rms']],axis=0),['NVSS_RA_offset','NVSS_DEC_offset']].to_csv(outputname+'_freq2.nvss_offset.csv')
 
 # Write out spectral indicies
 
@@ -1119,7 +1104,7 @@ with open(outputname+'.table.tex', 'w') as f:
 			if have_gbs:		
 				if(dfc['GBS'].iloc[j] or dfc['GBS'].iloc[k]):
 					cat_match = True
-					cat_list.append('GBS')
+					cat_list.append('G')
 				
 				'''
 				if(i==k):	# no match, check freq and enter label
@@ -1139,7 +1124,7 @@ with open(outputname+'.table.tex', 'w') as f:
 			if(have_xmm):
 				if(dfc['XMM'].iloc[j] or dfc['XMM'].iloc[k]):
 					cat_match = True
-					cat_list.append('XMM')
+					cat_list.append('X')
 			if(have_mass):
 				if(dfc['2MASS'].iloc[j] or dfc['2MASS'].iloc[k]):
 					cat_match = True

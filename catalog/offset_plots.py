@@ -30,7 +30,7 @@ for i in stems:
 			freq = '325 MHz'
 		else:
 			freq = '610 MHz'
-		name = i.split('/')[1]
+		name = i.split('/')[-1]
 		if name == 'DGTau':
 			pr_name = 'DG Tau'
 		if name == 'TTau':
@@ -41,16 +41,16 @@ for i in stems:
 		df = pd.read_csv(i+'_freq'+str(j+1)+'.nvss_offset.csv',skiprows=0,delimiter=',', engine='python')
 		frame_list[j].append(df)
 		
-		mean_ra, sigma_ra = np.mean(3600.0*df['NVSS_RA_offset'].values), np.std(3600.0*df['NVSS_RA_offset'].values)
-		mean_dec, sigma_dec = np.mean(3600.0*df['NVSS_DEC_offset'].values), np.std(3600.0*df['NVSS_DEC_offset'].values)
+		median_ra, sigma_ra = np.median(3600.0*df['NVSS_RA_offset'].values), np.std(3600.0*df['NVSS_RA_offset'].values)
+		median_dec, sigma_dec = np.median(3600.0*df['NVSS_DEC_offset'].values), np.std(3600.0*df['NVSS_DEC_offset'].values)
 		plt.scatter(3600.0*df['NVSS_RA_offset'].values, 3600.0*df['NVSS_DEC_offset'].values)
 
 		plt.xlabel(r'$\mathrm{RA\,Offset\,(arcsec)}$')
 		plt.ylabel(r'$\mathrm{DEC\,Offset\,(arcsec)}$')
 		plt.title(r'$\mathrm{'+pr_name+'\,'+freq+'}$')
 		print('Running '+pr_name+' '+freq+' with '+str(len(df))+' points.')
-		print('\t Mean RA offset = %.2f +/- %.2f arcsec.'%(mean_ra,sigma_ra))
-		print('\t Mean DEC offset = %.2f +/- %.2f arcsec.'%(mean_dec,sigma_dec))
+		print('\t Median RA offset = %.2f +/- %.2f arcsec.'%(median_ra,sigma_ra))
+		print('\t Median DEC offset = %.2f +/- %.2f arcsec.'%(median_dec,sigma_dec))
 		plt.savefig(args.output+name+'_freq'+str(j+1)+'.eps')
 		plt.clf()
 		
@@ -61,15 +61,15 @@ for j in range(2):
 		freq = '325 MHz'
 	else:
 		freq = '610 MHz'
-	mean_ra, sigma_ra = np.mean(3600.0*df['NVSS_RA_offset'].values), np.std(3600.0*df['NVSS_RA_offset'].values)
-	mean_dec, sigma_dec = np.mean(3600.0*df['NVSS_DEC_offset'].values), np.std(3600.0*df['NVSS_DEC_offset'].values)
+	median_ra, sigma_ra = np.median(3600.0*df['NVSS_RA_offset'].values), np.std(3600.0*df['NVSS_RA_offset'].values)
+	median_dec, sigma_dec = np.median(3600.0*df['NVSS_DEC_offset'].values), np.std(3600.0*df['NVSS_DEC_offset'].values)
 	plt.scatter(3600.0*df['NVSS_RA_offset'].values, 3600.0*df['NVSS_DEC_offset'].values)
 	plt.ylim(-6,6)
 	plt.xlim(-6,6)
 	plt.xlabel(r'$\mathrm{RA\,Offset\,(arcsec)}$')
 	plt.ylabel(r'$\mathrm{DEC\,Offset\,(arcsec)}$')
 	print('Running entire '+freq+' survey with '+str(len(df))+' points.')
-	print('\t Mean RA offset = %.2f +/- %.2f arcsec.'%(mean_ra,sigma_ra))
-	print('\t Mean DEC offset = %.2f +/- %.2f arcsec.'%(mean_dec,sigma_dec))
+	print('\t Median RA offset = %.2f +/- %.2f arcsec.'%(median_ra,sigma_ra))
+	print('\t Median DEC offset = %.2f +/- %.2f arcsec.'%(median_dec,sigma_dec))
 	plt.savefig(args.output+'combined_freq'+str(j+1)+'.eps')
 	plt.clf()
