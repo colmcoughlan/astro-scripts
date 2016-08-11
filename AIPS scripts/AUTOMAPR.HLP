@@ -1,0 +1,12 @@
+$
+----------------------------------------------------------------
+AUTOMAPR
+Type:  SCRIPT
+Use:   Quicker way of mapping a calibrated source
+	Generates final CALIB,ICL,QCL,UCL,PPOL and PANG files
+
+Procedures:
+  ginfo........This procedure loads in information necessary to run gloop
+  gloop(x,y)...This runs the script.
+  .............x is the number of iterations to do
+  .............y is the confirmation interval

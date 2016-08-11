@@ -1,0 +1,329 @@
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ Colm Coughlan : colmcoughlanirl@gmail.com
+$ Version beta 9/6/2010
+$ Version 1.00 7/7/2010
+$	added in support for EVPA corrections. Did testing
+$	fixed bugs. Script working properly
+$ Version 1.01 13/12/2011
+$	added some (slight) support for non AUTOMAPR formats
+$ Version 1.02 4/7/2014
+$	added option to apply Hovatta errors
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$	This script makes rotation measure maps quickly
+$	from maps created using the AUTOMAPR scrpt
+$	It follows the instructions from Dr. Densie Gabuzda's
+$	cook-book to do this
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ init_vars initialises the variables used
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+$
+proc init_vars
+	SCALAR inputdisk, nfreq, nfree, rotm;
+	SCALAR i,j,skippy,hovatta;
+	ARRAY maploc(7*1),blackbox(4*1),qnoise(7*1),unoise(7*1),lambda(7*1);
+	ARRAY evpacor(7*1);
+	STRING*12 filename;
+finish
+$
+$
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ MKBOX PROMPTS YOU TO SELECT A BOX
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+$
+proc mkbbox()
+	print 'Please select the black box';
+	tvbox;
+	FOR i=1 TO 4;
+		blackbox(i,1)=clbox(i,1);
+	END;
+	return blackbox;
+finish;
+$
+$
+$
+$
+$
+proc mkrmm()
+	print 'This script will make a rotation measure map using selected frequencies';
+	print 'How many frequencies do you wish to use? (max=7)'
+		read nfreq;
+	print 'Please enter the disk number';
+		read inputdisk;
+		indisk inputdisk;
+	print 'Please enter the next free catalogue number';
+		read nfree;
+	FOR i=1 to nfreq;
+		print 'What is the evpa correction for frequency (in degrees)'i;
+		read evpacor(i,1);
+	END;
+	print 'What is the Galactic Faraday Rotation coefficient?(in rad/m^2)';
+		read rotm;
+		rotm=rotm*180;
+		rotm=rotm/3.14159265;
+	print 'Are the files printed in AUTOMAPR format?(1/0)'
+	print 'i.e: IBM,ICL,QBM,QCL,UBM,UCL'
+		read maploc(1,1);
+	if maploc(1,1)<>1
+	THEN
+		print 'Are the files immediately sequential?'
+		print 'i.e: QCL,UCL'
+			read maploc(1,1);
+		if maploc(1,1)<>0
+		THEN
+			skippy=1;
+			print 'Assuming that the Q and U files are immediately sequential';
+			FOR i=1 to nfreq;
+				print 'Please enter the location of the QCL file number' i;
+				read maploc(i,1);
+			END;
+		ELSE
+			skippy=nfreq;
+			print 'Assuming that the Q and U are separated by nfreq';
+			FOR i=1 to nfreq;
+				print 'Please enter the location of the QCL file number' i;
+				read maploc(i,1);
+			END;
+		END;
+	ELSE
+		skippy=2;
+		FOR i=1 to nfreq;
+			print 'Please enter the location of the QCL file number' i;
+			read maploc(i,1);
+		END;
+	END;
+	print 'Would you like to make the Hovatta et al. correction?(1/0)'
+		read hovatta;
+$
+$
+$
+	indisk inputdisk;
+	getn maploc(1,1);
+	keyword='OBJECT';
+	gethead;
+	filename=keystrng!!'_XC';
+	tvini;
+	tvlod;
+	print 'Please choose a blank area of the map';
+	task 'ccedt';
+	mkbbox();
+	blc=0;
+	trc=0;
+	blc(1)=blackbox(1,1);
+	blc(2)=blackbox(2,1);
+	trc(1)=blackbox(3,1);
+	trc(2)=blackbox(4,1);
+	indis inputdisk;
+	FOR i=1 to nfreq
+		getn maploc(i,1);
+		imstat;
+		if hovatta<>1
+		THEN
+			qnoise(i,1)=pixstd;
+		ELSE
+			qnoise(i,1)=1.8*pixstd;
+		END
+		getn (maploc(i,1)+skippy);
+		imstat;
+		if hovatta<>1
+		THEN
+			unoise(i,1)=pixstd;
+		ELSE
+			unoise(i,1)=1.8*pixstd;
+		END
+	END;
+$
+$
+$
+	print 'Making noise maps';
+	FOR i=1 to nfreq
+		task 'comb'
+			default;
+			indisk inputdisk;
+			in2disk inputdisk;
+			outdisk inputdisk;	
+			getn maploc(i,1);
+			get2n (maploc(i,1)+skippy);
+			outclass '';
+			outseq=0
+			in3name '';
+			in3class '';
+			in4name '';
+			in4class '';
+			doalign=-2;
+			blc=0;
+			trc=0;
+			opcode 'POLA';
+			aparm=0;
+			bparm=0;
+			bparm(1)=qnoise(i,1);
+			bparm(2)=unoise(i,1);
+			bparm(3)=1;
+			go;
+			wait comb;
+	END;
+$
+$
+$
+	i=nfree;
+	j=1;
+	lambda=0;
+	print 'Correcting for Galactic Faraday rotation';
+	print 'chi_r = chi_obs -RM*lambda^2';
+	print 'Also doing EVPA corrections';
+	print 'chi_r = chi_obs + EVPACORR'
+	WHILE i<(nfree+(2*nfreq))
+		getn i;
+		keyword='crval3';
+		gethead;
+		lambda(j,1)=keyvalue(1);
+		lambda(j,1)=299792458/lambda(j,1);
+		task 'comb'
+			default;
+			indisk inputdisk;
+			in2disk inputdisk;
+			outdisk inputdisk;	
+			getn i;
+			get2n i;
+			outclass 'PANGR';
+			outseq=0
+			in3name '';
+			in3class '';
+			in4name '';
+			in4class '';
+			doalign=-2;
+			blc=0;
+			trc=0;
+			opcode 'SUM';
+			aparm=0;
+			aparm(1)=0.5;
+			aparm(2)=0.5;
+			aparm(3)=-rotm*(lambda(j,1)*lambda(j,1))+evpacor(j,1);
+			bparm=0;
+			go;
+			wait comb;
+		i=i+2;
+		j=j+1;
+	END;
+$
+$
+$
+	print 'Setting up files for creating rm maps';
+	j=nfree+1;
+	for i=1 to nfreq
+		indisk inputdisk;
+		getn (nfree+i-1+(2*nfreq));
+		outname filename;
+		outclass 'PANGI';
+		outseq=i;
+		rename;
+		getn j;
+		indisk inputdisk;
+		outname filename;
+		outclass 'PANGI';
+		outseq=nfreq+i;
+		rename;
+		j=j+2;
+	END;
+$
+$
+$
+	inname filename;
+	inclass 'PANGI';
+	naxis=3;
+	axval=0;
+	axref=1;
+	axinc=0;
+	axtype='WAVSQ';
+	FOR i=1 to 2*nfreq;
+		inseq=i;
+		axval i;
+		axdef;
+	END;
+$
+$
+$
+	task 'mcube'
+		default;
+		inname filename;
+		inclass 'PANGI';
+		indisk inputdisk;
+		outdisk inputdisk;
+		axref=1;
+		doalign=1;
+		npoints=2*nfreq;
+		inseq=1;
+		in2seq=2*nfreq;
+		in3seq=1;
+		outclass '';
+	go;
+	wait mcube;
+$
+$
+$
+	task 'trans'
+		default;
+		indisk inputdisk;
+		getn (nfree+(3*nfreq));
+		transcod '3124';
+		outclass '';
+		blc 0;
+		trc 0;
+		outdisk inputdisk;
+	go;
+	wait trans;
+$
+$
+$
+	for i=1 to nfreq
+		lambda(i,1)=(299792458/lambda(i,1))/1000000;
+	END;
+$
+$
+$
+	print 'Using versions found in PWD';
+	version='PWD'
+	task 'rm'
+		default;
+		indisk inputdisk;
+		getn (nfree+1+(3*nfreq));
+		blc 0;
+		trc 0;
+		outdisk inputdisk;
+		aparm nfreq nfreq 0 0 0 0 0 1 2 50;
+		bparm=0;
+		bparm lambda(1,1) lambda(2,1) lambda(3,1) lambda(4,1) lambda(5,1) lambda(6,1) lambda(7,1);
+		scalr1=0;
+$
+$
+$
+	print 'Process Complete';
+	print 'RM set up for use - type inp for details';
+$
+finish
+$
+$	Script loaded Version 1.02 4/7/2014 (current)
+$	WARNING! If using shifted maps, turn doshift to -2 in mcube!!!
+$

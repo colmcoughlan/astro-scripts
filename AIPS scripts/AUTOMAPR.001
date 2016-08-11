@@ -1,0 +1,983 @@
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ Colm Coughlan colmcoughlanirl@gmail.com
+$ Version 1.0 17/12/2009
+$	Main script developed as in Physics project report
+$ Version 1.01 21/6/2010
+$	Changed default cleaning factor to 1.0
+$	Changed levs to show lower emission
+$ Version 1.02 24/6/2010
+$	Added 'default' to each run of a task
+$		(to maintain default settings)
+$ Version 1.03 11/8/2010 (current)
+$	Improved text output of script during operation
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ How to run this code in AIPS - when aips has been run in the same
+$ directory as the script type the following in AIPS:
+$ restore 0
+$ version='PWD'
+$ run AUTOMAPR
+$ ginfo
+$ gloop(x,y)               (x,y are user-chosen positive integers)
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ init_vars initialises the variables used
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+$
+proc init_vars
+	SCALAR inputdisk, filenum, boxnum, temploc, solnt,ftemp,ftemp2
+	SCALAR imgsize,pflux,sloc,ccbn,celsize,tnum,k,miter,cond
+	SCALAR rshift,dshift,qshift,bshift,temp,temp2,goodshift
+	SCALAR abpa,abmaj,abmin,profac
+	ARRAY boxc(4*50),ccrds(4*10),blbox(4*1),levls(20)
+	ARRAY ntbox(4*50),sbox(4*1),caliblst(5*1)
+finish
+$
+$
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ RINSE CLEARS NTBOX OF ALL VALUES
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+$
+proc rinse()
+	FOR j=1 to 50
+		FOR k=1 TO 4;
+			ntbox(k,j)=0;
+		END;
+	END;
+finish
+$
+$
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ TESTSHIFT MAKES SURE CHOSEN COORDS ARE IN SHIFTED MAP
+$ INPUT: SINGLE SHIFTED PIXEL BOX
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+$
+proc testshift(ntbox)
+	goodshift=1;
+	FOR j=1 to 4;
+		IF ntbox(j,1)<0
+		THEN 
+			goodshift=0;
+		END;
+	END;
+	return goodshift;
+finish
+$
+$
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ MKBOX PROMPTS YOU TO SELECT A BOX AND RECORDS THE INPUT
+$ IT ALSO SHIFTS YOUR INPUT TO RELATIVE TO 0 IF NECESSARY
+$ INPUT: VALUE TO SUPPRESS/ALLOW SHIFTING
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+$
+proc mkbox(ftemp)
+	ftemp2=0;
+	WHILE ftemp2=0
+		print 'Please select the cc/clean/black box';
+		tvbox;
+		rinse();
+		FOR k=1 TO 4;
+			ntbox(k,1)=clbox(k,1);
+		END;
+		IF (qshift=1)&(ftemp=1)
+		THEN
+			FOR k=1 TO 4 BY 2;
+				ntbox(k,1)=(ntbox(k,1)-(rshift/celsize));
+			END;
+			FOR k=2 TO 4 BY 2;
+				ntbox(k,1)=(ntbox(k,1)+(dshift/celsize));
+			END;
+			ftemp2=testshift(ntbox);
+		ELSE
+			ftemp2=1;
+		END
+		If ftemp2=0
+		THEN
+			print 'Please re-enter the box inside the shifted image';
+		END
+	END;
+	return ntbox;
+finish;
+$
+$
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ PIXTOAS CONVERTS PIXELS TO ARCSECS FOR MAKING CCBOXES
+$ IF NECESSARY IT ALSO DOES THE REQUIRED SHIFTING
+$ INPUTS:
+$	ONE: ARRAY CONTAINING BOXES OF INTEREST
+$	TWO: NUMBER OF BOXES IN ARRAY
+$	THREE: COMMAND TO SHIFT OR NOT
+$		NOTE SHIFTING WITH RSHIFT AND DSHIFT=0 AFFECTS NOTHING
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+$
+proc pixtoas(ntbox,tnum,ftemp)
+	FOR j=1 TO tnum;
+		IF ftemp=1
+		THEN
+			FOR k=1 TO 4 BY 2;
+				ntbox(k,j)=(ntbox(k,j)-(rshift/celsize));
+			END;
+			FOR k=2 TO 4 BY 2;
+				ntbox(k,j)=(ntbox(k,j)+(dshift/celsize));
+			END;
+		END;
+		FOR k=1 TO 4 BY 2;
+			ntbox(k,j)=(-ntbox(k,j)+(imgsize/2));
+			ntbox(k,j)=(ntbox(k,j)*celsize);
+		END;
+		FOR k=2 TO 4 BY 2;
+			ntbox(k,j)=(ntbox(k,j)-(imgsize/2));
+			ntbox(k,j)=(ntbox(k,j)*celsize);
+		END;
+	END;
+	return ntbox;
+finish
+$
+$
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ ASTOPIX CONVERTS ARCSECONDS TO PIXELS FOR DISPLAY PURPOSES
+$ IF NECESSARY IT ALSO DOES THE REQUIRED SHIFTING
+$ INPUTS:
+$	ONE: ARRAY CONTAINING BOXES OF INTEREST
+$	TWO: NUMBER OF BOXES IN ARRAY
+$	THREE: COMMAND TO SHIFT OR NOT
+$		NOTE SHIFTING WITH RSHIFT AND DSHIFT=0 AFFECTS NOTHING
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+$
+proc astopix(ntbox,tnum,ftemp)
+	FOR j=1 TO tnum;
+		FOR k=2 TO 4 BY 2;
+			ntbox(k,j)=(ntbox(k,j)/celsize);
+			ntbox(k,j)=(ntbox(k,j)+(imgsize/2));
+		END;
+		FOR k=1 TO 4 BY 2;
+			ntbox(k,j)=(ntbox(k,j)/celsize);
+			ntbox(k,j)=(-ntbox(k,j)+(imgsize/2));
+			END;
+		IF ftemp=1
+		THEN
+			FOR k=1 TO 4 BY 2;
+				ntbox(k,j)=(ntbox(k,j)+(rshift/celsize));
+			END;
+			FOR k=2 TO 4 BY 2;
+				ntbox(k,j)=(ntbox(k,j)-(dshift/celsize));
+			END;
+		END;
+	END;
+return ntbox;
+finish
+$
+$
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ SHOWBOX TAKES IN PIXEL BOXES AND DISPLAYS THEM
+$ INPUTS:
+$	ONE: ARRAY CONAINING PIXELS OF BOXES
+$	TWO: NUMBER OF BOXES TO DISPLAY
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+$
+proc showbox(ntbox,tnum)
+	FOR j=1 to 50
+		FOR k=1 TO 4;
+			clbox(k,j)=0;
+		END;
+	END;
+	FOR j=1 to tnum;
+		FOR k=1 to 4;
+			clbox(k,j)=ntbox(k,j);
+		END;
+	END;
+	nboxes=tnum;
+	drawbox;
+finish
+$
+$
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ GINFO PROMPTS USER FOR INITIAL INPUT AND SETS VARIABLES UP
+$ FOR THE MAIN LOOP, GLOOP
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+$
+proc ginfo()
+	caliblst=240,60,10,2,0.5;
+	levls=-0.5,0.5,1,2,4,8,16,32,64,95,0;
+	profac=1;
+	print 'This task collects information for gloop';
+	print ' ';
+	print 'Please enter the disk number of the basis file';
+	print 'All files will be outputted to here';
+		read inputdisk;
+		indis inputdisk;
+	print ' ';
+	print 'Please enter the cat number of the basis file';
+		read filenum;
+		getn filenum;
+	tvini; tvlod;
+	print ' ';
+	print 'Please input the cellsize being used';
+		read celsize;
+		print celsize;
+	print ' ';
+	print 'Please input the image size being used';
+		read imgsize;
+		print imgsize;
+	print ' ';
+	print 'Would you like to use a specific bpa/bmaj/bmin? (1/0)';
+		read qshift;
+	IF qshift<>1
+	THEN
+		abpa=0;
+		abmaj=0;
+		abmin=0;
+		print 'BPA=BMAJ=BMIN=0';
+	ELSE
+		print 'Please enter the BPA';
+			read abpa;
+		print 'Please enter the BMAJ (as)';
+			read abmaj;
+		print 'Please enter the BMIN (as)';
+			read abmin;
+	END;
+	print ' ';
+	print 'Would you like to use a rashift or decshift? (1/0)';
+		read qshift;
+	IF qshift<>1
+	THEN
+		rshift=0;
+		dshift=0;
+		bshift=0;
+		print 'No shifting will be used';
+	ELSE
+		print 'Please enter the rashift in asec';
+			read rshift;
+		print 'Please enter the decshift in asec';
+			read dshift;
+		print 'Is the basis map already shifted with these values?(1/0)';
+			read bshift;
+		bshift=^bshift;
+		IF bshift=1
+		THEN
+			sbox=0;
+			sbox(1,1)=0-(rshift/celsize);
+			sbox(2,1)=0+(dshift/celsize);
+			sbox(3,1)=imgsize-(rshift/celsize);
+			sbox(4,1)=imgsize+(dshift/celsize);
+			FOR k=1 to 4
+				IF sbox(k,1)<1
+				THEN
+					sbox(k,1)=1;
+				END;
+				IF sbox(k,1)>imgsize
+				THEN
+					sbox(k,1)=imgsize;
+				END;
+			END;
+			clbox=0;
+			FOR k=1 to 4
+				clbox(k,1)=sbox(k,1);
+			END;
+			nboxes=1;
+			drawbox;
+			print 'This is the valid area in which to create boxes';
+			print 'Enter 1 to continue.';
+				read temp;
+		END;
+	END;
+	print ' ';
+	print 'Would you like to change the cleaning factor? (1/0)(default=1)'
+		read temploc;
+	If temploc=1
+	THEN
+		print 'Please enter the new value of the cleaning factor';
+		print 'Values higher than the default will clean deeper';
+		print 'You can also adjust cleaning depth by positioning the';
+		print 'black box over areas with false features';
+		read profac;
+	END;
+	print ' ';
+	print 'Please enter the next free catalogue number';
+		read temploc;
+	sloc=temploc;
+	print ' ';
+	print 'Please choose a blank area of the map'
+	task 'ccedt';
+	ntbox=mkbox(bshift);
+	FOR k=1 to 4
+		blbox(k,1)=ntbox(k,1);
+	END;
+$
+	$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+	$ When defining blc,trc we use unshifted coords as
+	$ we are referring to an unshifted map
+	$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+	blc=0;
+	trc=0;
+	blc(1)=(blbox(1,1)+(rshift/celsize));
+	blc(2)=(blbox(2,1)-(dshift/celsize));
+	trc(1)=(blbox(3,1)+(rshift/celsize));
+	trc(2)=(blbox(4,1)-(dshift/celsize));
+	indis inputdisk;
+	getn filenum;
+	imstat;
+	pflux=(pixstd/profac);
+$
+	$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+	$ pixstd is the rms value from the empty box selected, when imagr
+	$ cleans down to this value it will stop
+	$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+	blc=0;trc=0;
+	print ' ';
+	print 'Please select zoom level and tvphlame level';
+	tvzoom;tvphlame;
+	print ' ';
+	print 'Please enter the first clean box';
+		boxnum=1;
+	ntbox=mkbox(bshift);
+	FOR k=1 to 4;
+		boxc(k,1)=ntbox(k,1);
+	END;
+	print 'Would you like to delete/add a box? (0/1)';
+		read temp
+	WHILE temp=1
+		print 'Would you like to delete the current boxes? (0/1)'
+			read temp2;
+		IF temp2=1
+		THEN
+			FOR j=1 to 50
+				FOR k=1 TO 4;
+					boxc(k,j)=0;
+				END;
+			END;
+			boxnum=0;
+			print 'clboxes reset';
+		END;
+		ntbox=mkbox(bshift);
+		boxnum=boxnum+1;
+		FOR k=1 to 4;
+			boxc(k,boxnum)=ntbox(k,1);
+		END;
+		FOR j=1 to boxnum
+			FOR k=1 to 4;
+				ntbox(k,j)=boxc(k,j);
+			END;
+		END;
+		IF bshift=1
+		THEN
+			FOR j=1 to boxnum
+				FOR k=1 to 4 BY 2;
+					ntbox(k,j)=ntbox(k,j)+(rshift/celsize);
+				END;
+				FOR k=2 to 4 BY 2;
+					ntbox(k,j)=ntbox(k,j)-(dshift/celsize);
+				END;
+			END;
+		END;
+		showbox(ntbox,boxnum);
+		print 'Would you like to add in another additonal clean box? (1/0)'
+			read temp;
+	END;
+	print ' ';
+	print 'Please enter the first ccbox';
+	ccbn=1;
+	ntbox=mkbox(bshift);
+	ntbox=pixtoas(ntbox,1,0);
+	FOR k=1 to 4;
+		ccrds(k,1)=ntbox(k,1);
+	END;
+	print 'Would you like to delete/add a box? (0/1)';
+		read temp
+	WHILE temp=1
+		print 'Would you like to delete the current ccboxes? (0/1)'
+			read temp2;
+		IF temp2=1
+		THEN
+			FOR j=1 to 10
+				FOR k=1 TO 4;
+					ccrds(k,j)=0;
+				END;
+			END;
+			ccbn=0;
+			print 'ccboxes reset';
+		END;
+		ntbox=mkbox(bshift);
+		ccbn=ccbn+1;
+		ntbox=pixtoas(ntbox,1,0);
+		FOR k=1 to 4;
+			ccrds(k,ccbn)=ntbox(k,1);
+		END;
+		rinse();
+		FOR j=1 to ccbn
+			FOR k=1 TO 4;
+				ntbox(k,j)=ccrds(k,j);
+			END;
+		END;
+		ntbox=astopix(ntbox,ccbn,bshift);
+		showbox(ntbox,ccbn);
+		print 'Would you like to add in another additonal cc box? (1/0)'
+			read temp;
+		IF (ccbn=10)&(temp=1)
+		THEN
+			print 'AIPS only allows a maximum of 10 ccboxes';
+			print 'If you want to reset all boxes to make new ones enter 1';
+			print 'If you dont want to enter a new box after all enter 0';
+				read temp;
+			IF temp=1
+			THEN
+				FOR j=1 to 10
+					FOR k=1 TO 4;
+						ccrds(k,j)=0;
+					END;
+				END;
+				ccbn=0;
+				print 'ccboxes reset';
+			END;
+		END;
+	END;
+	print ' ';
+	print 'Please enter the catalogue number of the first UV map';
+		read filenum
+	print ' ';
+	print 'Information entered';
+	print ' ';
+	print 'You can now call gloop(x,y)';
+	print 'Where x is the number of iterations to use (rec:17)';
+	print 'and y is the confirmation interval(rec:3)';
+	print 'Note if you want to use different intervals to the';
+	print 'Recommended ones, please make sure to redefine';
+	print 'caliblst (if needed), an array which should contain the values of';
+	print 'solint to be used at each amplitude calibration';
+	print '(By default an a&p calib is done every three iterations';
+	print ', this can be changed easily in the code)';
+finish
+$
+$
+$
+$
+$
+$
+proc gloop(miter,cond)
+FOR i=1 TO miter
+$
+	task 'imagr'
+		default;
+		indis inputdisk;
+		stokes 'i';
+		imsize imgsize;
+		cellsize celsize;
+		niter=3000;
+		getn filenum;
+		in2name '';
+		in2class '';
+		in2seq 0;
+$
+$ NB : in2disk default (0) appears to be disk 9
+$      if working in disk nine set in2disk to another disk
+$      (this avoids catalogue errors)
+$
+		in2disk 8;
+		outver 1;
+		dotv -1;
+		outdis inputdisk;
+		nboxes boxnum;
+		clbox boxc;
+		flux=pflux;
+		rashift=rshift;
+		decshift=dshift;
+		bpa=abpa;
+		bmaj=abmaj;
+		bmin=abmin;
+		go;
+		wait imagr;
+$
+$
+$
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ Every third iteration (by default) you are asked if you want to
+$ set up another box for anything
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+	IF mod(i,cond)=0
+	THEN
+		tvini;
+		getn (temploc+1);
+		tvlod;tvphlame;tvzoom;
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ Below you are offered the chance to update your cleanboxes
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+		showbox(boxc,boxnum);
+		print ' ';
+		print ' ';
+		print ' ';
+		print 'Would you like to delete/add a clean box? (0/1)';
+			read temp
+		WHILE temp=1
+			print 'Would you like to delete the current boxes? (0/1)'
+				read temp2;
+			IF temp2=1
+			THEN
+				FOR j=1 to 50
+					FOR k=1 TO 4;
+						boxc(k,j)=0;
+					END;
+				END;
+				boxnum=0;
+				print 'clboxes reset';
+			END;
+			ntbox=mkbox(0);
+			boxnum=boxnum+1;
+			FOR k=1 to 4;
+				boxc(k,boxnum)=ntbox(k,1);
+			END;
+			showbox(boxc,boxnum);
+			print 'Would you like to add in another additonal clean box? (1/0)'
+				read temp;
+		END;
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ Below you are offered the chance to update your ccboxes
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+		rinse();
+		FOR j=1 to ccbn
+			FOR k=1 TO 4;
+				ntbox(k,j)=ccrds(k,j);
+			END;
+		END;
+		ntbox=astopix(ntbox,ccbn,qshift);
+		showbox(ntbox,ccbn);
+		print ' ';
+		print 'Would you like to delete/add a cc box? (0/1)';
+			read temp
+		WHILE temp=1
+			IF ccbn<>0
+			THEN
+				print 'Would you like to delete the current ccboxes? (0/1)'
+					read temp2;
+				IF temp2=1
+				THEN
+					FOR j=1 to 10
+						FOR k=1 TO 4;
+							ccrds(k,j)=0;
+						END;
+					END;
+					ccbn=0;
+					print 'ccboxes reset';
+				END;
+			END;
+			ntbox=mkbox(0);
+			ccbn=ccbn+1;
+			ntbox=pixtoas(ntbox,1,qshift);
+			FOR k=1 to 4;
+				ccrds(k,ccbn)=ntbox(k,1);
+			END;
+			rinse();
+			FOR j=1 to ccbn
+				FOR k=1 TO 4;
+					ntbox(k,j)=ccrds(k,j);
+				END;
+			END;
+			ntbox=astopix(ntbox,ccbn,qshift);
+			showbox(ntbox,ccbn);
+			print 'Would you like to add in another additonal cc box? (1/0)'
+				read temp;
+			IF ccbn=10
+			THEN
+				print 'AIPS only allows a maximum of 10 ccboxes';
+				print 'If you want to reset all boxes to make new ones enter 1';
+				print 'If you dont want to enter a new box after all enter 0';
+					read temp;
+				IF temp=1
+				THEN
+					FOR j=1 to 10
+						FOR k=1 TO 4;
+							ccrds(k,j)=0;
+						END;
+					END;
+					ccbn=0;
+					print 'ccboxes reset';
+				END;
+			END;
+		END;
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ Below you are offered the chance to update your black box
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+		rinse();
+		FOR k=1 to 4
+			ntbox(k,1)=blbox(k,1);
+		END;
+		tvini;tvlod;
+		showbox(ntbox,1);
+		print ' ';
+		print 'Would you like to change the black box?(0/1)';
+			read temp
+		WHILE temp=1
+			print 'Please choose a blank area of the map'
+			task 'ccedt';
+			ntbox=mkbox(0);
+			FOR k=1 to 4
+				blbox(k,1)=ntbox(k,1);
+			END;
+			rinse();
+			FOR k=1 to 4
+				ntbox(k,1)=blbox(k,1);
+			END;
+			showbox(ntbox,1);
+			print 'Is this new black box satisfactory?(0/1)'
+				read temp;
+			temp=^temp;
+		END;
+	END;
+$
+	task 'ccntr'
+		default;
+		tvini;
+		wait;
+		indis inputdisk;
+		outdis inputdisk;
+		ltype 4;
+		invers 1;
+		grchan 1;
+		plev 1;
+		clev 0;
+		inext 'cc';
+		levs levls;
+		dotv 1;
+		getn (temploc+1);
+		go;
+		wait ccntr;
+	task 'ccedt'
+		default;
+		indis inputdisk;
+		outdis inputdisk;
+		cparm 0;
+		invers 1;
+		outvers 2;
+		nboxes 0;
+		clbox 0;
+		nccbox ccbn;
+		ccbox ccrds;
+		getn (temploc+1);
+		go;
+		wait ccedt;
+	task 'ccntr'
+		default;
+		indis inputdisk;
+		outdis inputdisk;
+		ltype 4;
+		invers 2;
+		grchan 2;
+		plev 1;
+		clev 0;
+		inext 'cc';
+		levs levls;
+		dotv 1;
+		getn (temploc+1);
+		go;
+		wait ccntr;
+$
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ The part imediately below this runs calib within the main loop
+$ You can change the frequency at which an a&p calib is done by
+$ changing mod(i,3) to mod(i,y), where y is your desired frequency
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+	task 'calib'
+		default;
+		indis inputdisk;
+		in2dis inputdisk;
+		outdis inputdisk;
+		getn filenum;
+		get2n (temploc+1);
+		invers 2;
+		IF mod(i,cond)=0
+		THEN
+			solmode 'a&p';
+			solint=caliblst((i/cond),1);
+			print ' ';
+			print 'Now doing Amplitude and Phase calibration';
+			print 'Current value of solint is:';
+			print solint;
+			print ' ';
+		ELSE
+			solmode 'p';
+			solint=0.5;
+			print ' ';
+			print 'Now doing Phase Only calibration';
+			print 'Current value of solint is:';
+			print solint;
+			print ' ';
+		END;
+		go;
+		wait calib;
+$
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ The part imediately below this gets the new pflux, arbitarily divides it by a constant
+$ and resets the filenum and temploc to be ready for the next iteration
+$ It also sets the levs to be used by the next ccntrs
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+$
+	blc(1)=blbox(1,1);
+	blc(2)=blbox(2,1);
+	trc(1)=blbox(3,1);
+	trc(2)=blbox(4,1);
+	indis inputdisk;
+	getn (temploc+1);
+	imstat;
+	pflux=(pixstd/profac);
+	blc=0;trc=0;
+	filenum=(temploc+2);
+	print 'Catalogue number of map updated to:';
+	print filenum;
+	temploc=(filenum+1);
+	print 'Next free catalogue number updated to:';
+	print temploc;
+	If i<7
+	THEN
+		levls=-0.5,0.5,1,2,4,8,16,32,64,95,0;
+	ELSE
+		levls=-0.2,0.2,0.5,1,2,4,8,16,32,64,95,0;
+	END
+END;
+$
+$
+$
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$ The part imediately below this activates at the end of the script
+$ to print out qcls, icls and offers to delete interm files
+$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+$
+$
+$
+	print ' ';
+	print 'Creating final set of maps';
+	print ' ';
+	task 'imagr'
+		default;
+		indis inputdisk;
+		stokes 'i';
+		imsize imgsize;
+		cellsize celsize;
+		niter=3000;
+		getn filenum;
+		in2name '';
+		in2class '';
+		in2seq 0;
+		in2disk 8;
+		outver 1;
+		dotv -1;
+		outdis inputdisk;
+		nboxes boxnum;
+		clbox boxc;
+		flux=pflux;
+		rashift=rshift;
+		decshift=dshift;
+		bpa=abpa;
+		bmaj=abmaj;
+		bmin=abmin;
+		go;
+		wait imagr;
+	task 'imagr'
+		default;
+		indis inputdisk;
+		stokes 'q';
+		imsize imgsize;
+		cellsize celsize;
+		niter=3000;
+		getn filenum;
+		in2name '';
+		in2class '';
+		in2seq 0;
+		in2disk 8;
+		outver 1;
+		dotv -1;
+		outdis inputdisk;
+		nboxes boxnum;
+		clbox boxc;
+		flux=pflux;
+		rashift=rshift;
+		decshift=dshift;
+		bpa=abpa;
+		bmaj=abmaj;
+		bmin=abmin;
+		go;
+		wait imagr;
+	task 'imagr'
+		default;
+		indis inputdisk;
+		stokes 'u';
+		imsize imgsize;
+		cellsize celsize;
+		niter=3000;
+		getn filenum;
+		in2name '';
+		in2class '';
+		in2seq 0;
+		in2disk 8;
+		outver 1;
+		dotv -1;
+		outdis inputdisk;
+		nboxes boxnum;
+		clbox boxc;
+		flux=pflux;
+		rashift=rshift;
+		decshift=dshift;
+		bpa=abpa;
+		bmaj=abmaj;
+		bmin=abmin;
+		go;
+		wait imagr;
+	task 'comb'
+		default;
+		indisk inputdisk;
+		in2disk inputdisk;
+		outdisk inputdisk;	
+		getn (filenum+4);
+		get2n (filenum+6);
+		in3name '';
+		in3class '';
+		in4name '';
+		in4class '';
+		doalign=-2;
+		blc=0;
+		trc=0;
+		opcode 'POLI';
+		aparm=0;
+		bparm=0;
+		go;
+		wait comb;
+	task 'comb'
+		default;
+		indisk inputdisk;
+		in2disk inputdisk;
+		outdisk inputdisk;	
+		getn (filenum+4);
+		get2n (filenum+6);
+		in3name '';
+		in3class '';
+		in4name '';
+		in4class '';
+		doalign=-2;
+		blc=0;
+		trc=0;
+		opcode 'POLA';
+		aparm=0;
+		bparm=0;
+		go;
+		wait comb;
+	print ' ';
+	print 'Would you like to delete all interm files? (1/0)';
+		read temp;
+	IF temp=1
+	THEN
+		indis inputdisk;
+		for k=sloc to (filenum-1)
+			getn k zap;
+		end;
+		recat;
+	END
+	print ' ';
+	print ' ';
+	print 'Process Completed';
+	print ' ';
+	print ' ';
+finish
+$
+$	Script loaded Version 1.03 11/8/2010
+$
+$
